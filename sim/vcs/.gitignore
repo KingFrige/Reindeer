@@ -1,0 +1,8 @@
+*.log
+*.fsdb
+*.dump
+ucli.key
+verdiLog/
+obj_dir/
+csr/
+vfastLog/

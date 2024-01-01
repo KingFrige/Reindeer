@@ -15,6 +15,16 @@
 #
 ###############################################################################
 
+VCS_OPTIONS = -full64
+VCS_OPTIONS += +libext+.v
+VCS_OPTIONS += -debug_all
+VCS_OPTIONS += +v2k
+VCS_OPTIONS += -sverilog
+VCS_OPTIONS += -l compile.log
+VCS_OPTIONS += ${NOVAS_VCS_ARGS}
+VCS_OPTIONS += -timescale=1ps/1ps
+VCS_OPTIONS += +lint=all
+
 ###############################################################################
 #== compliance test vector folder
 ###############################################################################
@@ -153,25 +163,39 @@ test_all : build
     
 run : build
 	@echo "runing $(test_run_case)" ;
-	./obj_dir/V$(src_top) $(test_run_case)
+	./obj_dir/V$(src_top) +dump_fsdb=1 $(test_run_case) | tee run.log
+
+objdump:
+	riscv32-unknown-elf-objdump -S -D ../compliance/I-ADDI-01.elf | tee I-ADDI-01.asm.dump
 
 $(target) : $(src_sub_v) $(src_base)/$(src_top_v) $(testbench)
 	@echo "====> Building $(target)"
-	iverilog -o $(target) -I../../submodules/PulseRain_MCU/memory/microsemi -I../../submodules/PulseRain_MCU/common -I../../submodules/PulseRain_MCU/common/Microsemi/SmartFusion2 -I../../submodules/PulseRain_MCU/PulseRain_processor_core/source  -I../../submodules/PulseRain_MCU/PulseRain_processor_core/source/mul_div $(src_sub_v) $(src_base)/$(src_top_v) $(testbench)
+	vcs -o $(target) $(VCS_OPTIONS) \
+									+incdir+../../submodules/PulseRain_MCU/memory/microsemi \
+									+incdir+../../submodules/PulseRain_MCU/common \
+									+incdir+../../submodules/PulseRain_MCU/common/Microsemi/SmartFusion2 \
+									+incdir+../../submodules/PulseRain_MCU/PulseRain_processor_core/source \
+									+incdir+../../submodules/PulseRain_MCU/PulseRain_processor_core/source/mul_div \
+									$(src_sub_v) $(src_base)/$(src_top_v) $(testbench)
+
+verdi:
+	verdi -sv -f flist.f -top mcu_test &
 
 clean :
 	@echo "====> Remove obj_dir"
 	-@rm -rf ./obj_dir
+	-@rm -rf simv.daidir
+	-@rm -rf csrc
 
 help :
 	@echo "*) To build : make or make build\n"
 	@echo "*) To clean the build : make clean\n"
 	@echo "*) To test single or multiple compliance cases : make test case1 case2 case3 ..."
 	@echo "         for example : make test I-ADD-01 DIV I-FENCE.I-01"
-	@echo "*) To test all compliance cases : make test_all\n"
 	@echo "*) To run an elf file : make run file_name\n"
+	@echo "*) To objdump : make objdump\n"
     
 %:
 	@true
-    
-.PHONY: clean test test_all help run build
+
+.PHONY: clean test test_all help run build verdi 
